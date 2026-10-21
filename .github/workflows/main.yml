@@ -1,0 +1,27 @@
+name: Build Apple Watch App
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+      
+      - name: Build and Archive
+        run: |
+          # لاحظ: يجب تغيير YourProject باسم مشروعك الفعلي في GitHub
+          xcodebuild -project YourProject.xcodeproj -scheme YourProject -sdk iphoneos -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO archive -archivePath build.xcarchive
+          
+      - name: Package IPA
+        run: |
+          mkdir -p Payload
+          cp -r build.xcarchive/Products/Applications/*.app Payload/
+          zip -r TasbeehApp_AppleDesign.ipa Payload
+          
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tasbeeh-App
+          path: TasbeehApp_AppleDesign.ipa
