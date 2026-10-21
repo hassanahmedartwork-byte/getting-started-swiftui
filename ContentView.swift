@@ -1,106 +1,61 @@
 import SwiftUI
-import Replicate
-
-// Get your API token at https://replicate.com/account
-private let client = Replicate.Client(token: <#token#>)
-#warning(
-"""
-Don't put secrets in code or any other resources bundled with your app.
-Instead, fetch them from CloudKit or another server and store them in the keychain.
-
-See:
-• https://developer.apple.com/documentation/cloudkit/ckdatabase/1449126-fetch
-• https://developer.apple.com/documentation/security/certificate_key_and_trust_services/keys/storing_keys_in_the_keychain
-"""
-)
-
-// https://replicate.com/stability-ai/stable-diffusion
-enum StableDiffusion: Predictable {
-    static var modelID = "stability-ai/stable-diffusion"
-    static let versionID = "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b0c49861f96d1e5bf"
-
-    struct Input: Codable {
-        let prompt: String
-    }
-
-    typealias Output = [URL]
-}
+import WatchKit
 
 struct ContentView: View {
-    @State private var prompt = ""
-    @State private var prediction: StableDiffusion.Prediction? = nil
+    @State private var count = 0
+    @State private var selectedTasbeeh = 0
+    // حفظ العداد حتى لو قفلت الساعة
+    @AppStorage("savedCount") private var savedCount = 0 
+    
+    let tasbeehList = ["سبحان الله", "الحمد لله", "لا إله إلا الله", "الله أكبر", "أستغفر الله"]
     
     var body: some View {
-        Form {
-            Section {
-                TextField(text: $prompt,
-                          prompt: Text("Enter a prompt to display an image"),
-                          axis: .vertical,
-                          label: {})
-                    .disabled(prediction?.status.terminated == false)
-                    .submitLabel(.go)
-                    .onSubmit(of: .text) {
-                        Task {
-                            try! await generate()
-                        }
-                    }
-            }
-            
-            if let prediction {
-                ZStack {
-                    Color.clear
-                        .aspectRatio(1.0, contentMode: .fit)
-                    
-                    switch prediction.status {
-                    case .starting, .processing:
-                        VStack{
-                            ProgressView("Generating...")
-                                .padding(32)
-                            
-                            Button("Cancel") {
-                                Task { try await cancel() }
-                            }
-                        }
-                    case .failed:
-                        Text(prediction.error?.localizedDescription ?? "Unknown error")
-                            .foregroundColor(.red)
-                    case .succeeded:
-                        if let url = prediction.output?.first {
-                            VStack {
-                                AsyncImage(url: url, scale: 2.0, content: { phase in
-                                    phase.image?
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fit)
-                                        .cornerRadius(32)
-                                })
-                                
-                                ShareLink("Export", item: url)
-                                    .padding(32)
-
-                            }
-                        }
-                    case .canceled:
-                        Text("The prediction was canceled")
-                            .foregroundColor(.secondary)
-                    }
+        VStack(spacing: 8) {
+            // 1. عجلة التسبيح (تعمل بالتاج الرقمي)
+            Picker("", selection: $selectedTasbeeh) {
+                ForEach(0..<tasbeehList.count, id: \.self) { index in
+                    Text(tasbeehList[index])
+                        .font(.headline)
+                        .foregroundStyle(.green)
+                        .tag(index)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                .padding()
-                .listRowBackground(Color.clear)
-                .listRowInsets(.init())
             }
+            .pickerStyle(.wheel)
+            .frame(height: 55) // حجم مناسب أعلى الشاشة
+            
+            // 2. زر العداد (تصميم آبل الزجاجي)
+            Button(action: {
+                count += 1
+                savedCount = count
+                // اهتزاز مع كل عدة
+                WKInterfaceDevice.current().play(.click)
+            }) {
+                Text("\(count)")
+                    .font(.system(size: 50, weight: .bold, design: .rounded)) // خط الأرقام الرسمي
+                    .minimumScaleFactor(0.5)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.green.opacity(0.2)) // خلفية زجاجية شفافة
+                    )
+            }
+            .buttonStyle(.plain)
+            // ربط الزر بحركة ضم الإصبعين
+            .handGestureShortcut(.primaryAction) 
+            
+            // 3. زر التصفير
+            Button(action: {
+                count = 0
+                savedCount = 0
+            }) {
+                Text("تصفير")
+                    .font(.footnote)
+                    .foregroundStyle(.red)
+            }
+            .buttonStyle(.plain)
         }
-        
-        Spacer()
-    }
-    
-    func generate() async throws {
-        prediction = try await StableDiffusion.predict(with: client,
-                                                       input: .init(prompt: prompt))
-        try await prediction?.wait(with: client)
-    }
-    
-    func cancel() async throws {
-        try await prediction?.cancel(with: client)
+        .onAppear {
+            count = savedCount // استرجاع الرقم القديم عند الفتح
+        }
     }
 }
