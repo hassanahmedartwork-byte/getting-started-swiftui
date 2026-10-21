@@ -11,7 +11,7 @@ jobs:
       
       - name: Build and Archive
         run: |
-          xcodebuild -project YourProject.xcodeproj -scheme YourProject -sdk iphoneos -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO archive -archivePath build.xcarchive
+          xcodebuild -project ReplicateExample.xcodeproj -scheme ReplicateExample -sdk iphoneos -configuration Release CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO archive -archivePath build.xcarchive
           
       - name: Package IPA
         run: |
